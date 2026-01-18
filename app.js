@@ -73,28 +73,44 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    // Normalize phone number
+    // ── Aggressive phone normalization to prevent +233233... redundancy ───────
     let normalizedPhone = phone.trim().replace(/\D/g, ''); // remove non-digits
 
     if (!normalizedPhone) {
       return res.status(400).json({ error: 'Invalid phone number' });
     }
 
-    // If user accidentally includes leading zero after +, remove it
+    // Remove duplicated country code prefix (common user mistake)
+    const possiblePrefixes = [
+      '233',        // most common
+      '00233',
+      '000233',
+      '2633',       // sometimes mistyped
+      '0233'
+    ];
+
+    for (const prefix of possiblePrefixes) {
+      if (normalizedPhone.startsWith(prefix)) {
+        normalizedPhone = normalizedPhone.substring(prefix.length);
+        console.log(`Removed duplicated prefix: ${prefix}`);
+        break;
+      }
+    }
+
+    // Remove leading zero (domestic format) after prefix cleanup
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = normalizedPhone.substring(1);
     }
 
-    // Ensure it starts with country code (we expect + from frontend)
+    // Ensure it starts with +
     if (!normalizedPhone.startsWith('+')) {
-      // In case frontend sent without +, assume it's Ghana +233
-      normalizedPhone = '+233' + normalizedPhone;
+      normalizedPhone = '+233' + normalizedPhone; // fallback to Ghana
     }
 
-    // Basic validation: at least 8 digits after country code
+    // Final validation
     const digitsAfterCode = normalizedPhone.replace('+', '').length;
     if (digitsAfterCode < 8 || digitsAfterCode > 15) {
-      return res.status(400).json({ error: 'Phone number must be 8-15 digits long (after country code)' });
+      return res.status(400).json({ error: 'Phone number must be 8-15 digits long after country code' });
     }
 
     phone = normalizedPhone; // use cleaned version
@@ -124,7 +140,7 @@ app.post('/api/register', async (req, res) => {
     const user = new User({
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      phone, // normalized full international format
+      phone, // now correctly normalized (e.g. +233594823418)
       ticketCode,
     });
     await user.save();
