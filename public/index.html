@@ -118,15 +118,9 @@
 
     .tickets-left strong { font-size: 2rem; color: var(--rose-red); }
 
-    .form-section {
-      margin-bottom: 32px;
-    }
+    .form-section { margin-bottom: 32px; }
 
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 28px;
-    }
+    form { display: flex; flex-direction: column; gap: 28px; }
 
     .form-group {
       display: flex;
@@ -193,9 +187,30 @@
       margin-top: 12px;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       transform: translateY(-3px);
       box-shadow: 0 14px 36px rgba(193,24,91,0.4);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    button:disabled::after {
+      content: '';
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-left: 10px;
+      border: 2px solid white;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     #message {
@@ -204,10 +219,20 @@
       border-radius: 14px;
       font-weight: 500;
       text-align: center;
+      line-height: 1.5;
     }
 
-    #message.success { background: rgba(76,175,80,0.18); color: #1b5e20; border: 1px solid rgba(76,175,80,0.5); }
-    #message.error   { background: rgba(244,67,54,0.18); color: #b71c1c; border: 1px solid rgba(244,67,54,0.5); }
+    #message.success {
+      background: rgba(76,175,80,0.18);
+      color: #1b5e20;
+      border: 1px solid rgba(76,175,80,0.5);
+    }
+
+    #message.error {
+      background: rgba(244,67,54,0.18);
+      color: #b71c1c;
+      border: 1px solid rgba(244,67,54,0.5);
+    }
 
     .heart { font-size: 1.6rem; margin: 0 8px; color: var(--rose-red); }
 
@@ -288,7 +313,6 @@
               <option value="+234">Nigeria (+234)</option>
               <option value="+1">United States / Canada (+1)</option>
               <option value="+44">United Kingdom (+44)</option>
-              <!-- Add more countries as needed -->
             </select>
 
             <input 
@@ -315,6 +339,8 @@
   <script>
     const messageDiv = document.getElementById('message');
     const ticketsSpan = document.getElementById('tickets-left');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const form = document.getElementById('reg-form');
 
     async function updateTickets() {
       try {
@@ -323,18 +349,23 @@
         ticketsSpan.textContent = data.left;
       } catch (err) {
         ticketsSpan.textContent = '—';
-        console.error(err);
+        console.error('Failed to update tickets count:', err);
       }
     }
 
+    // Load tickets count on page load
     updateTickets();
 
-    document.getElementById('reg-form').addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      // Show processing state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = 'Processing...';
       messageDiv.textContent = '';
       messageDiv.className = '';
 
-      const formData = new FormData(e.target);
+      const formData = new FormData(form);
       const name = formData.get('name').trim();
       const email = formData.get('email').trim();
       const countryCode = formData.get('countryCode');
@@ -349,6 +380,7 @@
       if (!name || !email || !localPhone) {
         messageDiv.textContent = 'Please fill all fields correctly';
         messageDiv.className = 'error';
+        resetButton();
         return;
       }
 
@@ -363,17 +395,37 @@
 
         const result = await res.json();
 
-        if (!res.ok) throw new Error(result.error || 'Registration failed');
+        if (!res.ok) {
+          throw new Error(result.error || 'Registration failed');
+        }
 
-        messageDiv.textContent = `Success! Your ticket code is ${result.ticketCode}. We've sent it to your email & WhatsApp. ♥`;
+        // Success feedback
+        messageDiv.innerHTML = `
+          <strong>Success!</strong><br>
+          Your ticket code: <span style="font-size:1.3em; font-weight:bold; color:#c2185b;">${result.ticketCode}</span><br>
+          We've sent it to your email & WhatsApp.<br>
+          <small>Check spam/junk folder if you don't see it soon.</small>
+        `;
         messageDiv.className = 'success';
+
+        // Refresh ticket count
         updateTickets();
-        e.target.reset();
+
+        // Reset form
+        form.reset();
+
       } catch (err) {
-        messageDiv.textContent = err.message;
+        messageDiv.textContent = err.message || 'Something went wrong – please try again';
         messageDiv.className = 'error';
+      } finally {
+        resetButton();
       }
     });
+
+    function resetButton() {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Secure My Free Ticket';
+    }
   </script>
 </body>
 </html>
