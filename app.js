@@ -80,7 +80,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid phone number' });
     }
 
-    // Remove duplicated country code prefix (common mistake)
+    // Remove duplicated country code prefix
     const possiblePrefixes = ['233', '00233', '000233', '2633', '0233'];
     for (const prefix of possiblePrefixes) {
       if (normalizedPhone.startsWith(prefix)) {
@@ -90,14 +90,14 @@ app.post('/api/register', async (req, res) => {
       }
     }
 
-    // Remove leading zero after prefix cleanup
+    // Remove leading zero
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = normalizedPhone.substring(1);
     }
 
-    // Ensure it starts with +
+    // Ensure starts with +
     if (!normalizedPhone.startsWith('+')) {
-      normalizedPhone = '+233' + normalizedPhone; // fallback to Ghana
+      normalizedPhone = '+233' + normalizedPhone;
     }
 
     // Final validation
@@ -145,7 +145,7 @@ app.post('/api/register', async (req, res) => {
       success: true,
       ticketCode,
       message: `Registration successful! Your ticket (${ticketCode}) is confirmed.\n\nWe're sending it to your email & WhatsApp right now — check in a minute (also check spam).`,
-      delivery: { emailSent: false, whatsappSent: false } // will be updated in background
+      delivery: { emailSent: false, whatsappSent: false }
     });
 
     // ──────────────────────────────────────────────
@@ -155,18 +155,21 @@ app.post('/api/register', async (req, res) => {
       let emailSuccess = false;
       let whatsappSuccess = false;
 
-      // Email
+      // Recommended Gmail SMTP config (port 587 + STARTTLS + timeouts)
       const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
+        port: 587,
+        secure: false,           // STARTTLS
+        requireTLS: true,
+        connectionTimeout: 10000,   // 10s
+        greetingTimeout: 5000,
+        socketTimeout: 15000,       // 15s
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-        // debug: true,
+        // debug: true,          // Uncomment temporarily for testing
         // logger: true,
-        // tls: { rejectUnauthorized: false }, // TEMP only if needed
       });
 
       try {
@@ -224,7 +227,7 @@ app.post('/api/register', async (req, res) => {
         console.error('Background WhatsApp failed:', waErr.message);
       }
 
-      // Optional: you could log successes/failures to a file or another DB collection
+      // Optional future: log delivery status somewhere
     })();
 
   } catch (err) {
