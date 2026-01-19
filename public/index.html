@@ -114,9 +114,23 @@
 
     .tickets-section { text-align: center; margin-bottom: 48px; }
 
-    .tickets-left { font-size: 1.35rem; color: var(--primary); font-weight: 500; }
+    .tickets-display {
+      font-size: 1.35rem;
+      color: var(--primary);
+      font-weight: 500;
+    }
 
-    .tickets-left strong { font-size: 2rem; color: var(--rose-red); }
+    .tickets-remaining {
+      font-size: 1.9rem;
+      color: var(--rose-red);
+      font-weight: 700;
+    }
+
+    .tickets-total {
+      color: var(--text-light);
+      font-size: 1.15rem;
+      margin-left: 8px;
+    }
 
     .form-section { margin-bottom: 32px; }
 
@@ -285,8 +299,10 @@
     <div class="section-divider"></div>
 
     <div class="tickets-section">
-      <div class="tickets-left">
-        Tickets Remaining: <strong id="tickets-left">Loading...</strong>
+      <div class="tickets-display">
+        Tickets Remaining: 
+        <strong class="tickets-remaining" id="tickets-remaining">Loading...</strong>
+        <span class="tickets-total"> / <span id="tickets-total">Loading...</span></span>
       </div>
     </div>
 
@@ -338,7 +354,8 @@
 
   <script>
     const messageDiv = document.getElementById('message');
-    const ticketsSpan = document.getElementById('tickets-left');
+    const remainingSpan = document.getElementById('tickets-remaining');
+    const totalSpan = document.getElementById('tickets-total');
     const submitBtn = document.querySelector('button[type="submit"]');
     const form = document.getElementById('reg-form');
 
@@ -346,20 +363,21 @@
       try {
         const res = await fetch('/api/tickets-left');
         const data = await res.json();
-        ticketsSpan.textContent = data.left;
+        remainingSpan.textContent = data.left ?? '—';
+        totalSpan.textContent = data.total ?? '—';
       } catch (err) {
-        ticketsSpan.textContent = '—';
-        console.error('Failed to update tickets count:', err);
+        remainingSpan.textContent = '—';
+        totalSpan.textContent = '—';
+        console.error('Failed to update tickets:', err);
       }
     }
 
-    // Load tickets count on page load
+    // Load on page open
     updateTickets();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      // Show processing state
       submitBtn.disabled = true;
       submitBtn.innerHTML = 'Processing...';
       messageDiv.textContent = '';
@@ -395,27 +413,23 @@
 
         const result = await res.json();
 
-        if (!res.ok) {
-          throw new Error(result.error || 'Registration failed');
-        }
+        if (!res.ok) throw new Error(result.error || 'Registration failed');
 
-        // Success feedback
         messageDiv.innerHTML = `
           <strong>Success!</strong><br>
           Your ticket code: <span style="font-size:1.3em; font-weight:bold; color:#c2185b;">${result.ticketCode}</span><br>
           We've sent it to your email & WhatsApp.<br>
-          <small>Check spam/junk folder if you don't see it soon.</small>
+          <small>Check spam/junk if not received soon.</small>
         `;
         messageDiv.className = 'success';
 
-        // Refresh ticket count
+        // Refresh ticket display
         updateTickets();
 
-        // Reset form
         form.reset();
 
       } catch (err) {
-        messageDiv.textContent = err.message || 'Something went wrong – please try again';
+        messageDiv.textContent = err.message || 'Something went wrong – try again';
         messageDiv.className = 'error';
       } finally {
         resetButton();

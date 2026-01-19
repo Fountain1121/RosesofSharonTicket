@@ -58,10 +58,14 @@ app.get('/api/tickets-left', async (req, res) => {
   try {
     const counter = await Counter.findById('ticket');
     if (!counter) throw new Error('Counter not found');
-    res.json({ left: counter.total - counter.current });
+
+    res.json({
+      left: counter.total - counter.current,
+      total: counter.total
+    });
   } catch (err) {
     console.error('Tickets-left error:', err);
-    res.status(500).json({ error: 'Failed to fetch tickets left' });
+    res.status(500).json({ error: 'Failed to fetch ticket info' });
   }
 });
 
