@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
-const twilio = require('twilio');
+const axios = require('axios');
 const path = require('path');
 const dotenv = require('dotenv');
 
@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Schemas
+// MongoDB Schemas (unchanged)
 const counterSchema = new mongoose.Schema({
   _id: String,
   current: Number,
@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// Connect to MongoDB & Initialize Counter
+// Connect to MongoDB & Initialize Counter (unchanged)
 mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
@@ -49,7 +49,7 @@ mongoose
     process.exit(1);
   });
 
-// Routes
+// Routes (unchanged except register)
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -58,8 +58,7 @@ app.get('/api/tickets-left', async (req, res) => {
   try {
     const counter = await Counter.findById('ticket');
     if (!counter) throw new Error('Counter not found');
-
-    res.json({
+    res.json({ 
       left: counter.total - counter.current,
       total: counter.total
     });
@@ -77,14 +76,13 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    // Normalize phone number
+    // Normalize phone (unchanged)
     let normalizedPhone = phone.trim().replace(/\D/g, '');
 
     if (!normalizedPhone) {
       return res.status(400).json({ error: 'Invalid phone number' });
     }
 
-    // Remove duplicated country code prefix
     const possiblePrefixes = ['233', '00233', '000233', '2633', '0233'];
     for (const prefix of possiblePrefixes) {
       if (normalizedPhone.startsWith(prefix)) {
@@ -94,17 +92,14 @@ app.post('/api/register', async (req, res) => {
       }
     }
 
-    // Remove leading zero
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = normalizedPhone.substring(1);
     }
 
-    // Ensure starts with +
     if (!normalizedPhone.startsWith('+')) {
       normalizedPhone = '+233' + normalizedPhone;
     }
 
-    // Final validation
     const digitsAfterCode = normalizedPhone.replace('+', '').length;
     if (digitsAfterCode < 8 || digitsAfterCode > 15) {
       return res.status(400).json({ error: 'Phone number must be 8-15 digits long after country code' });
@@ -112,13 +107,13 @@ app.post('/api/register', async (req, res) => {
 
     phone = normalizedPhone;
 
-    // Prevent duplicate registrations
+    // Prevent duplicates (unchanged)
     const existing = await User.findOne({ email: email.trim().toLowerCase() });
     if (existing) {
       return res.status(400).json({ error: 'This email is already registered' });
     }
 
-    // Atomically claim a ticket
+    // Claim ticket (unchanged)
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
@@ -133,7 +128,7 @@ app.post('/api/register', async (req, res) => {
     const ticketNumber = counter.current;
     const ticketCode = `ROS-${String(ticketNumber).padStart(4, '0')}`;
 
-    // Save registration
+    // Save user (unchanged)
     const user = new User({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -142,43 +137,39 @@ app.post('/api/register', async (req, res) => {
     });
     await user.save();
 
-    // ──────────────────────────────────────────────
-    // Respond to user IMMEDIATELY (fast UX)
-    // ──────────────────────────────────────────────
+    // Respond immediately
     res.json({
       success: true,
       ticketCode,
-      message: `Registration successful! Your ticket (${ticketCode}) is confirmed.\n\nWe're sending it to your email & WhatsApp right now — check in a minute (also check spam).`,
-      delivery: { emailSent: false, whatsappSent: false }
+      message: `Registration successful! Your ticket (${ticketCode}) is confirmed.\nWe're sending it to your email & SMS right now — check in a minute (also check spam).`,
+      delivery: { emailSent: false, smsSent: false }
     });
 
-    // ──────────────────────────────────────────────
-    // Send email & WhatsApp in background (non-blocking)
-    // ──────────────────────────────────────────────
+    // Background sending
     (async () => {
       let emailSuccess = false;
-      let whatsappSuccess = false;
+      let smsSuccess = false;
 
-      // Recommended Gmail SMTP config (port 587 + STARTTLS + timeouts)
+      // Event details (unchanged)
+      const eventDate = '13th February, 2026';
+      const eventTime = '6:00 PM';
+      const eventLocation = 'Love Country Church, Dayspring, Haatso, Accra, Ghana';
+      const mapUrl = 'https://www.google.com/maps/search/?api=1&query=Love+Country+Church%2C+Dayspring%2C+Haatso%2C+Accra%2C+Ghana';
+
+      // Email with Brevo SMTP
       const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: 'smtp-relay.brevo.com',
         port: 587,
-        secure: false,           // STARTTLS
-        requireTLS: true,
-        connectionTimeout: 10000,   // 10s
-        greetingTimeout: 5000,
-        socketTimeout: 15000,       // 15s
+        secure: false,
         auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
+          user: process.env.BREVO_SMTP_USER,
+          pass: process.env.BREVO_SMTP_PASS
         },
-        // debug: true,          // Uncomment temporarily for testing
-        // logger: true,
       });
 
       try {
         const info = await transporter.sendMail({
-          from: `"Roses of Sharon Team" <${process.env.EMAIL_USER}>`,
+          from: `"Roses of Sharon Team" <${process.env.BREVO_SMTP_USER}>`,
           to: email.trim(),
           subject: 'Your Roses of Sharon Virtual Ticket ♥',
           html: `
@@ -191,11 +182,11 @@ app.post('/api/register', async (req, res) => {
                   <p style="font-size: 1.2em; font-weight: bold;">Your Ticket Code: ${ticketCode}</p>
                   <p><strong>Event Details:</strong></p>
                   <ul style="list-style: none; padding-left: 0;">
-                    <li>📅 <strong>Date:</strong> 13th February, 2026</li>
-                    <li>🕕 <strong>Time:</strong> 6:00 PM</li>
-                    <li>📍 <strong>Location:</strong> Love Country Church, Dayspring, Haatso, Accra, Ghana</li>
+                    <li>📅 <strong>Date:</strong> ${eventDate}</li>
+                    <li>🕕 <strong>Time:</strong> ${eventTime}</li>
+                    <li>📍 <strong>Location:</strong> ${eventLocation}</li>
                   </ul>
-                  <p>Find your way easily: <a href="https://www.google.com/maps/search/?api=1&query=Love+Country+Church%2C+Dayspring%2C+Haatso%2C+Accra%2C+Ghana" style="color: #c2185b; text-decoration: none; font-weight: bold;">View on Google Maps</a></p>
+                  <p>Find your way easily: <a href="${mapUrl}" style="color: #c2185b; text-decoration: none; font-weight: bold;">View on Google Maps</a></p>
                   <img src="cid:ticketImage" alt="Roses of Sharon Ticket" style="max-width: 100%; margin: 20px 0; border-radius: 8px;" />
                   <p>We look forward to sharing this beautiful evening of love, worship, and fellowship with you!</p>
                   <p style="text-align: center; color: #777; font-size: 0.9em;">Blessings,<br>The Church Team</p>
@@ -217,21 +208,29 @@ app.post('/api/register', async (req, res) => {
         console.error('Background email failed:', emailErr.message);
       }
 
-      // WhatsApp
+      // SMS with Brevo API
       try {
-        const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
-        await twilioClient.messages.create({
-          from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
-          to: `whatsapp:${phone}`,
-          body: `Dear ${name.trim()},\n\nThank you for registering for Roses of Sharon!\n\nYour Ticket Code: ${ticketCode}\nDate: 13th February, 2026\nTime: 6:00 PM\nLocation: Love Country Church, Dayspring, Haatso, Accra, Ghana\nMap: https://www.google.com/maps/search/?api=1&query=Love+Country+Church%2C+Dayspring%2C+Haatso%2C+Accra%2C+Ghana\n\nWe can't wait to see you there! ♥\nThe Church Team`,
-        });
-        console.log('Background WhatsApp sent successfully');
-        whatsappSuccess = true;
-      } catch (waErr) {
-        console.error('Background WhatsApp failed:', waErr.message);
+        await axios.post(
+          'https://api.brevo.com/v3/transactionalSMS/sms',
+          {
+            sender: process.env.BREVO_SMS_SENDER,
+            recipient: phone,
+            content: `Dear ${name.trim()},\n\nThank you for registering for Roses of Sharon!\n\nYour Ticket Code: ${ticketCode}\nDate: ${eventDate}\nTime: ${eventTime}\nLocation: ${eventLocation}\nMap: ${mapUrl}\n\nWe can't wait to see you there! ♥\nThe Church Team`,
+            type: 'transactional'
+          },
+          {
+            headers: {
+              'accept': 'application/json',
+              'api-key': process.env.BREVO_API_KEY,
+              'content-type': 'application/json'
+            }
+          }
+        );
+        console.log('Background SMS sent successfully');
+        smsSuccess = true;
+      } catch (smsErr) {
+        console.error('Background SMS failed:', smsErr.message);
       }
-
-      // Optional future: log delivery status somewhere
     })();
 
   } catch (err) {
@@ -240,7 +239,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// TEMPORARY RESET ENDPOINT – REMOVE BEFORE PRODUCTION!
+// TEMPORARY RESET – REMOVE BEFORE PRODUCTION!
 app.post('/api/reset-test', async (req, res) => {
   try {
     await User.deleteMany({});
