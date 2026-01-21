@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Schemas (unchanged)
+// MongoDB Schemas
 const counterSchema = new mongoose.Schema({
   _id: String,
   current: Number,
@@ -58,6 +58,7 @@ app.get('/api/tickets-left', async (req, res) => {
   try {
     const counter = await Counter.findById('ticket');
     if (!counter) throw new Error('Counter not found');
+
     res.json({ 
       left: counter.total - counter.current,
       total: counter.total
@@ -76,7 +77,7 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    // Normalize phone (keep your existing logic)
+    // Normalize phone
     let normalizedPhone = phone.trim().replace(/\D/g, '');
 
     if (!normalizedPhone) {
@@ -113,7 +114,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'This email is already registered' });
     }
 
-    // Atomically claim a ticket
+    // Atomically claim a ticket – this line prevents overselling
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
@@ -122,7 +123,10 @@ app.post('/api/register', async (req, res) => {
     );
 
     if (!counter) {
-      return res.status(410).json({ error: 'No tickets left – event is fully booked' });
+      // No tickets left – return clear error
+      return res.status(410).json({ 
+        error: 'No tickets left – event is fully booked. All available tickets have been claimed.' 
+      });
     }
 
     const ticketNumber = counter.current;
@@ -213,8 +217,8 @@ app.post('/api/register', async (req, res) => {
         await axios.post(
           'https://api.brevo.com/v3/transactionalSMS/sms',
           {
-            sender: process.env.BREVO_SMS_SENDER,          // e.g. "ChurchEvent"
-            recipient: phone,                              // full international number (+233xxxxxxxxx)
+            sender: process.env.BREVO_SMS_SENDER,
+            recipient: phone,
             content: `Dear ${name.trim()},\n\nThank you for registering for Roses of Sharon!\n\nYour Ticket Code: ${ticketCode}\nDate: ${eventDate}\nTime: ${eventTime}\nLocation: ${eventLocation}\nMap: ${mapUrl}\n\nWe can't wait to see you there! ♥\nThe Church Team`,
             type: 'transactional'
           },
