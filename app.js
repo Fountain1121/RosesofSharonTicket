@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-// Connect to MongoDB & Initialize Counter (unchanged)
+// Connect to MongoDB & Initialize Counter
 mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
@@ -49,7 +49,7 @@ mongoose
     process.exit(1);
   });
 
-// Routes (unchanged except register)
+// Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -76,7 +76,7 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    // Normalize phone (unchanged)
+    // Normalize phone (keep your existing logic)
     let normalizedPhone = phone.trim().replace(/\D/g, '');
 
     if (!normalizedPhone) {
@@ -107,13 +107,13 @@ app.post('/api/register', async (req, res) => {
 
     phone = normalizedPhone;
 
-    // Prevent duplicates (unchanged)
+    // Prevent duplicate registrations
     const existing = await User.findOne({ email: email.trim().toLowerCase() });
     if (existing) {
       return res.status(400).json({ error: 'This email is already registered' });
     }
 
-    // Claim ticket (unchanged)
+    // Atomically claim a ticket
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
@@ -128,7 +128,7 @@ app.post('/api/register', async (req, res) => {
     const ticketNumber = counter.current;
     const ticketCode = `ROS-${String(ticketNumber).padStart(4, '0')}`;
 
-    // Save user (unchanged)
+    // Save registration
     const user = new User({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -137,7 +137,7 @@ app.post('/api/register', async (req, res) => {
     });
     await user.save();
 
-    // Respond immediately
+    // Respond to user immediately (fast UX)
     res.json({
       success: true,
       ticketCode,
@@ -145,18 +145,18 @@ app.post('/api/register', async (req, res) => {
       delivery: { emailSent: false, smsSent: false }
     });
 
-    // Background sending
+    // Background sending (non-blocking)
     (async () => {
       let emailSuccess = false;
       let smsSuccess = false;
 
-      // Event details (unchanged)
+      // Event details
       const eventDate = '13th February, 2026';
       const eventTime = '6:00 PM';
       const eventLocation = 'Love Country Church, Dayspring, Haatso, Accra, Ghana';
       const mapUrl = 'https://www.google.com/maps/search/?api=1&query=Love+Country+Church%2C+Dayspring%2C+Haatso%2C+Accra%2C+Ghana';
 
-      // Email with Brevo SMTP
+      // Email via Brevo SMTP
       const transporter = nodemailer.createTransport({
         host: 'smtp-relay.brevo.com',
         port: 587,
@@ -208,13 +208,13 @@ app.post('/api/register', async (req, res) => {
         console.error('Background email failed:', emailErr.message);
       }
 
-      // SMS with Brevo API
+      // SMS via Brevo API
       try {
         await axios.post(
           'https://api.brevo.com/v3/transactionalSMS/sms',
           {
-            sender: process.env.BREVO_SMS_SENDER,
-            recipient: phone,
+            sender: process.env.BREVO_SMS_SENDER,          // e.g. "ChurchEvent"
+            recipient: phone,                              // full international number (+233xxxxxxxxx)
             content: `Dear ${name.trim()},\n\nThank you for registering for Roses of Sharon!\n\nYour Ticket Code: ${ticketCode}\nDate: ${eventDate}\nTime: ${eventTime}\nLocation: ${eventLocation}\nMap: ${mapUrl}\n\nWe can't wait to see you there! ♥\nThe Church Team`,
             type: 'transactional'
           },
