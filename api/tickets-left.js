@@ -1,17 +1,19 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Cache DB connection (important for serverless)
+// Cache DB connection for serverless efficiency
 let cachedDb = null;
 
 async function connectDb() {
   if (cachedDb) return cachedDb;
+  if (!process.env.MONGO_URI) {
+    throw new Error('MONGO_URI is not set');
+  }
   await mongoose.connect(process.env.MONGO_URI);
   cachedDb = mongoose.connection;
   return cachedDb;
 }
 
-// Counter model
 const counterSchema = new mongoose.Schema({
   _id: String,
   current: Number,
@@ -30,7 +32,7 @@ module.exports = async (req, res) => {
       total: counter.total
     });
   } catch (err) {
-    console.error('Tickets-left error:', err.message);
+    console.error('Tickets-left failed:', err.message);
     res.status(500).json({ error: 'Failed to fetch ticket info' });
   }
 };

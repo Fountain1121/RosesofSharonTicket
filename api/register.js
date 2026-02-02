@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Cache DB connection (serverless best practice)
 let cachedDb = null;
+
 async function connectDb() {
   if (cachedDb) return cachedDb;
   await mongoose.connect(process.env.MONGO_URI);
@@ -10,7 +10,6 @@ async function connectDb() {
   return cachedDb;
 }
 
-// User & Counter models
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true },
@@ -40,7 +39,7 @@ module.exports = async (req, res) => {
   try {
     await connectDb();
 
-    // Normalize phone (your existing logic)
+    // Normalize phone
     let normalizedPhone = phone.trim().replace(/\D/g, '');
     if (!normalizedPhone) return res.status(400).json({ error: 'Invalid phone number' });
 
@@ -67,7 +66,7 @@ module.exports = async (req, res) => {
 
     phone = normalizedPhone;
 
-    // Atomically claim ticket
+    // Claim ticket atomically
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
@@ -77,12 +76,11 @@ module.exports = async (req, res) => {
 
     if (!counter) {
       return res.status(410).json({ 
-        error: 'No tickets left – event is fully booked. All available tickets have been claimed.' 
+        error: 'No tickets left – event is fully booked.' 
       });
     }
 
-    const ticketNumber = counter.current;
-    const ticketCode = `ROS-${String(ticketNumber).padStart(4, '0')}`;
+    const ticketCode = `ROS-${String(counter.current).padStart(4, '0')}`;
 
     // Save
     const user = new User({
@@ -95,10 +93,10 @@ module.exports = async (req, res) => {
     res.status(200).json({
       success: true,
       ticketCode,
-      message: `Registration successful!\n\nYour ticket code is ${ticketCode}.\n\nPlease keep this code safe.\nWe will contact you soon via WhatsApp with further details.\nThank you! ♥`
+      message: `Registration successful!\nYour ticket code is ${ticketCode}.\nKeep it safe. We will contact you via WhatsApp. ♥`
     });
   } catch (err) {
-    console.error('Registration error:', err);
-    res.status(500).json({ error: 'Server error – please try again or contact support' });
+    console.error('Register failed:', err.message);
+    res.status(500).json({ error: 'Server error – try again' });
   }
 };
