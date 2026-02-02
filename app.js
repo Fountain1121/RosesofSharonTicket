@@ -8,12 +8,12 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// Only keep non-API routes here (or move /api/register to its own file later)
+// Only static page + other routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Temporary reset endpoint (remove before production)
+// Temporary reset (remove later)
 app.post('/api/reset-test', async (req, res) => {
   try {
     const mongoose = require('mongoose');
@@ -27,7 +27,6 @@ app.post('/api/reset-test', async (req, res) => {
       { $set: { current: 0 } },
       { upsert: true, new: true }
     );
-
     res.json({ success: true, message: 'Test data cleared – counter reset' });
   } catch (err) {
     console.error('Reset failed:', err);
@@ -35,5 +34,4 @@ app.post('/api/reset-test', async (req, res) => {
   }
 });
 
-// Export for Vercel serverless
 module.exports = app;
