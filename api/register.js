@@ -5,14 +5,23 @@ let cachedDb = null;
 
 async function connectDb() {
   if (cachedDb) return cachedDb;
+  if (!process.env.MONGO_URI) {
+    throw new Error('MONGO_URI environment variable is missing');
+  }
   await mongoose.connect(process.env.MONGO_URI);
   cachedDb = mongoose.connection;
   return cachedDb;
 }
 
+// Schema with unique constraint on phone
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  phone: { type: String, required: true },
+  phone: { 
+    type: String, 
+    required: true,
+    unique: true,          // ← Enforces uniqueness at database level
+    index: true            // ← Faster duplicate checks
+  },
   ticketCode: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
@@ -39,9 +48,11 @@ module.exports = async (req, res) => {
   try {
     await connectDb();
 
-    // Normalize phone
+    // Normalize phone number (your existing logic)
     let normalizedPhone = phone.trim().replace(/\D/g, '');
-    if (!normalizedPhone) return res.status(400).json({ error: 'Invalid phone number' });
+    if (!normalizedPhone) {
+      return res.status(400).json({ error: 'Invalid phone number' });
+    }
 
     const possiblePrefixes = ['233', '00233', '000233', '2633', '0233'];
     for (const prefix of possiblePrefixes) {
@@ -66,7 +77,15 @@ module.exports = async (req, res) => {
 
     phone = normalizedPhone;
 
-    // Claim ticket
+    // Check if this WhatsApp number is already registered
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(409).json({ 
+        error: 'This WhatsApp number is already registered. Only one ticket per number is allowed.' 
+      });
+    }
+
+    // Claim a ticket (atomically)
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
@@ -82,12 +101,13 @@ module.exports = async (req, res) => {
 
     const ticketCode = `ROS-${String(counter.current).padStart(4, '0')}`;
 
-    // Save
+    // Save the new registration
     const user = new User({
       name: name.trim(),
       phone,
       ticketCode,
     });
+
     await user.save();
 
     res.status(200).json({
@@ -95,8 +115,17 @@ module.exports = async (req, res) => {
       ticketCode,
       message: `Registration successful!\nYour ticket code is ${ticketCode}.\nKeep it safe. We will contact you via WhatsApp. ♥`
     });
+
   } catch (err) {
     console.error('Register failed:', err.message);
-    res.status(500).json({ error: 'Server error – try again' });
+
+    // Handle MongoDB duplicate key error (phone already exists)
+    if (err.code === 11000 && err.keyPattern?.phone) {
+      return res.status(409).json({ 
+        error: 'This WhatsApp number is already registered. Only one ticket per number is allowed.' 
+      });
+    }
+
+    res.status(500).json({ error: 'Server error – please try again' });
   }
 };

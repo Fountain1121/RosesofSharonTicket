@@ -19,7 +19,7 @@ const Counter = mongoose.model('Counter', counterSchema);
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  phone: { type: String, required: true }, // WhatsApp number only
+  phone: { type: String, required: true, unique: true, index: true }, // WhatsApp number only
   ticketCode: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
