@@ -229,11 +229,12 @@
 
     #message {
       margin-top: 32px;
-      padding: 18px;
+      padding: 18px 24px;
       border-radius: 14px;
       font-weight: 500;
       text-align: center;
-      line-height: 1.5;
+      line-height: 1.6;
+      white-space: pre-wrap;
     }
 
     #message.success {
@@ -358,7 +359,11 @@
     async function updateTickets() {
       try {
         const res = await fetch('/api/tickets-left');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text().then(t => t.slice(0,100))}`);
+        }
         const data = await res.json();
+
         remainingSpan.textContent = data.left ?? '—';
         totalSpan.textContent = data.total ?? '—';
 
@@ -373,9 +378,9 @@
           formSection.style.display = 'none';
         }
       } catch (err) {
-        remainingSpan.textContent = '—';
+        console.error('Ticket fetch failed:', err);
+        remainingSpan.textContent = 'Error';
         totalSpan.textContent = '—';
-        console.error('Failed to update tickets:', err);
       }
     }
 
@@ -390,17 +395,17 @@
       messageDiv.className = '';
 
       const formData = new FormData(form);
-      const name = formData.get('name').trim();
+      const name = formData.get('name')?.trim();
       const countryCode = formData.get('countryCode');
-      let localPhone = formData.get('localPhone').trim().replace(/\D/g, '');
+      let localPhone = formData.get('localPhone')?.trim().replace(/\D/g, '');
 
-      if (localPhone.startsWith('0')) {
+      if (localPhone?.startsWith('0')) {
         localPhone = localPhone.substring(1);
       }
 
       const fullPhone = countryCode + localPhone;
 
-      if (!name || !localPhone) {
+      if (!name || !fullPhone) {
         messageDiv.textContent = 'Please fill all fields correctly';
         messageDiv.className = 'error';
         resetButton();
@@ -418,14 +423,19 @@
 
         const result = await res.json();
 
-        if (!res.ok) throw new Error(result.error || 'Registration failed');
+        if (!res.ok) {
+          throw new Error(result.error || `Server error (${res.status})`);
+        }
 
         messageDiv.innerHTML = `
-          <strong>Success!</strong><br>
-          Your ticket code: <span style="font-size:1.3em; font-weight:bold; color:#c2185b;">${result.ticketCode}</span><br>
-          Please keep this code safe.<br>
-          We will contact you soon via WhatsApp with further details.<br>
-          <small>Thank you! ♥</small>
+          <strong>Success!</strong><br><br>
+          Your ticket code is:<br>
+          <span style="font-size:1.8em; font-weight:bold; color:#c2185b; letter-spacing:2px;">
+            ${result.ticketCode}
+          </span><br><br>
+          Please <strong>save or screenshot</strong> this code.<br>
+          We will contact you soon via WhatsApp with further details.<br><br>
+          Thank you! ♥
         `;
         messageDiv.className = 'success';
 
@@ -433,7 +443,7 @@
         form.reset();
 
       } catch (err) {
-        messageDiv.textContent = err.message;
+        messageDiv.textContent = err.message || 'Something went wrong – please try again';
         messageDiv.className = 'error';
       } finally {
         resetButton();
