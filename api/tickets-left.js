@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Cache DB connection for serverless efficiency
+// Cache connection for serverless
 let cachedDb = null;
 
 async function connectDb() {

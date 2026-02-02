@@ -8,7 +8,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Optional reset (keep if needed)
+// Optional: reset-test (keep if needed)
 app.post('/api/reset-test', async (req, res) => {
   try {
     const mongoose = require('mongoose');

@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
 
     phone = normalizedPhone;
 
-    // Claim ticket atomically
+    // Claim ticket
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
