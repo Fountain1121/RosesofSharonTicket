@@ -350,108 +350,127 @@
         // Hide form and show success view
         formSection.style.display = 'none';
 
-        messageDiv.innerHTML = `
-          <div style="
-            animation: fadeIn 1.2s ease-out;
-            text-align: center;
-            padding: 16px 0;
-            max-width: 480px;
-            margin: 0 auto;
-          ">
-            <strong style="font-size: 1.6em; color: #c2185b; display: block; margin-bottom: 12px;">
-              Congratulations, ${name}! ♥
-            </strong>
+// Hide form and old content to create a "new page" feel
+formSection.style.display = 'none';
+document.querySelector('.container').style.padding = '20px';
+document.body.style.background = 'linear-gradient(135deg, #fff0f5, #ffe4e1)';
 
-            <p style="font-size: 1.05em; color: #555; margin-bottom: 20px;">
-              Your ticket for Roses of Sharon is confirmed!
-            </p>
+// Beautiful success view without QR code
+messageDiv.innerHTML = `
+  <div class="success-view" style="
+    animation: fadeIn 1.5s ease-out;
+    text-align: center;
+    padding: 24px 0;
+    max-width: 500px;
+    margin: 0 auto;
+  ">
+    <h2 style="
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4em;
+      color: #c2185b;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    ">
+      Welcome, ${name}! ♥
+    </h2>
 
-            <div style="
-              background: white;
-              border-radius: 16px;
-              box-shadow: 0 6px 20px rgba(193,24,91,0.15);
-              padding: 16px;
-              margin: 16px auto;
-              max-width: 90%;
-              border: 1px solid #fce4ec;
-            ">
-              <img 
-                id="ticketImage"
-                src="/ticket.jpg" 
-                alt="Your Roses of Sharon Ticket"
-                style="display: block; width: 100%; height: auto; border-radius: 10px; margin-bottom: 16px;"
-                onerror="this.src='https://via.placeholder.com/400x550/fff5f7/c2185b?text=Your+Ticket';"
-              >
+    <p style="font-size: 1.15em; color: #555; margin-bottom: 24px;">
+      Your spot at <strong>Roses of Sharon</strong> is now reserved!<br>
+      Show this ticket at the entrance on February 13th, 2026.
+    </p>
 
-              <div style="
-                font-size: 1.1em;
-                font-weight: bold;
-                color: #c2185b;
-                letter-spacing: 2px;
-                padding: 8px 16px;
-                background: #fff5f7;
-                border-radius: 10px;
-                border: 2px dashed #c2185b;
-              ">
-                ${result.ticketCode}
-              </div>
-            </div>
+    <!-- Ticket Card -->
+    <div style="
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(193,24,91,0.25);
+      padding: 24px;
+      margin: 0 auto 28px;
+      border: 2px dashed #c2185b;
+      max-width: 420px;
+    ">
+      <img 
+        id="ticketImage"
+        src="/ticket.jpg" 
+        alt="Your Roses of Sharon Ticket" 
+        style="display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 20px;"
+        onerror="this.src='https://via.placeholder.com/400x550/fff5f7/c2185b?text=Your+Ticket';"
+      >
 
-            <p style="font-size: 1.05em; margin: 12px 0 20px; color: #555;">
-              Please <strong>screenshot or download</strong> this ticket now.<br>
-              Show it at the entrance on February 13th, 2026.
-            </p>
+      <!-- Ticket Code (below image) -->
+      <div style="
+        font-size: 2.2em;
+        font-weight: bold;
+        color: #c2185b;
+        letter-spacing: 2px;
+        text-align: center;
+        padding: 12px 20px;
+        background: #fff5f7;
+        border-radius: 12px;
+        border: 2px dashed #c2185b;
+      ">
+        ${result.ticketCode}
+      </div>
+    </div>
 
-            <button id="downloadBtn" style="
-              background: linear-gradient(90deg, #c2185b, #e91e63);
-              color: white;
-              border: none;
-              padding: 12px 28px;
-              font-size: 1.05em;
-              font-weight: 600;
-              border-radius: 50px;
-              cursor: pointer;
-              box-shadow: 0 4px 16px rgba(193,24,91,0.25);
-              transition: all 0.3s;
-            ">
-              Download Ticket
-            </button>
+    <p style="font-size: 1.1em; color: #555; margin: 16px 0;">
+      <strong>Please screenshot or download</strong> this ticket now.<br>
+      Show this ticket number at the entrance.
+    </p>
 
-            <div style="font-size: 1.2em; color: #c2185b; margin-top: 20px;">
-              See you there! 🌹♥
-            </div>
-          </div>
-        `;
-        messageDiv.className = 'success';
+    <!-- Download Button -->
+    <button id="downloadBtn" style="
+      background: linear-gradient(90deg, #c2185b, #e91e63);
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      font-size: 1.1em;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(193,24,91,0.3);
+      transition: all 0.3s;
+      margin-top: 16px;
+    ">
+      Download Ticket
+    </button>
 
-        // Download button
-        document.getElementById('downloadBtn').addEventListener('click', () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          const img = document.getElementById('ticketImage');
+    <div style="font-size: 1.3em; color: #c2185b; margin-top: 24px;">
+      See you there! 🌹♥
+    </div>
+  </div>
+`;
+messageDiv.className = 'success';
 
-          if (img.complete) {
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight + 100;
+// Download button functionality (downloads image + ticket code text)
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const img = document.getElementById('ticketImage');
 
-            ctx.fillStyle = '#fff5f7';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (img.complete) {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight + 120; // space for ticket code below
 
-            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+    ctx.fillStyle = '#fff5f7';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.font = 'bold 60px Arial';
-            ctx.fillStyle = '#c2185b';
-            ctx.textAlign = 'center';
-            ctx.fillText(result.ticketCode, canvas.width / 2, img.naturalHeight + 70);
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
 
-            const link = document.createElement('a');
-            link.download = `roses-ticket-${result.ticketCode}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-          } else {
-            alert('Wait for the ticket image to load before downloading.');
-          }
-        });
+    // Add ticket code text below image
+    ctx.font = 'bold 80px Arial';
+    ctx.fillStyle = '#c2185b';
+    ctx.textAlign = 'center';
+    ctx.fillText(result.ticketCode, canvas.width / 2, img.naturalHeight + 80);
+
+    const link = document.createElement('a');
+    link.download = `roses-ticket-${result.ticketCode}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } else {
+    alert('Please wait for the ticket image to fully load before downloading.');
+  }
+});
 
         updateTickets();
 
