@@ -360,7 +360,8 @@
       try {
         const res = await fetch('/api/tickets-left');
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${await res.text().then(t => t.slice(0,100))}`);
+          const errorText = await res.text();
+          throw new Error(`Server returned ${res.status}: ${errorText.slice(0, 100)}...`);
         }
         const data = await res.json();
 
@@ -378,7 +379,7 @@
           formSection.style.display = 'none';
         }
       } catch (err) {
-        console.error('Ticket fetch failed:', err);
+        console.error('Ticket fetch failed:', err.message);
         remainingSpan.textContent = 'Error';
         totalSpan.textContent = '—';
       }
@@ -433,7 +434,7 @@
           <span style="font-size:1.8em; font-weight:bold; color:#c2185b; letter-spacing:2px;">
             ${result.ticketCode}
           </span><br><br>
-          Please <strong>save or screenshot</strong> this code.<br>
+          Please <strong>save or screenshot</strong> this code right now.<br>
           We will contact you soon via WhatsApp with further details.<br><br>
           Thank you! ♥
         `;
