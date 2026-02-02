@@ -428,49 +428,51 @@
           throw new Error(result.error || `Server error (${res.status})`);
         }
 
-        messageDiv.innerHTML = `
-          <div style="text-align: center; padding: 20px 0;">
-            <strong style="font-size: 1.6em; color: #c2185b; display: block; margin-bottom: 16px;">
-              Success! Your Ticket is Confirmed ♥
-            </strong>
+messageDiv.innerHTML = `
+  <div style="text-align: center; padding: 20px 0;">
+    <strong style="font-size: 1.6em; color: #c2185b; display: block; margin-bottom: 16px;">
+      Success! Your Ticket is Confirmed ♥
+    </strong>
 
-            <div style="position: relative; display: inline-block; max-width: 90%; margin: 0 auto 24px;">
-              <img 
-                src="/ticket.jpg" 
-                alt="Your Roses of Sharon Ticket" 
-                style="display: block; width: 100%; height: auto; border-radius: 16px; box-shadow: 0 12px 32px rgba(193,24,91,0.25); border: 2px solid #fce4ec;"
-                onload="this.style.opacity=1"
-                onerror="this.src='https://via.placeholder.com/500x700/fff5f7/c2185b?text=Ticket+Image+Not+Found';"
-              >
-              <div style="
-                position: absolute;
-                bottom: 24px;
-                left: 24px;
-                color: #c2185b;
-                font-size: 2.2em;
-                font-weight: 900;
-                letter-spacing: 3px;
-                text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
-                background: rgba(255,255,255,0.75);
-                padding: 8px 16px;
-                border-radius: 12px;
-                border: 2px solid #c2185b;
-              ">
-                ${result.ticketCode}
-              </div>
-            </div>
+    <!-- Card for the ticket image + code -->
+    <div style="
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(193,24,91,0.2);
+      padding: 24px;
+      margin: 0 auto 24px;
+      max-width: 90%;
+      border: 2px solid #fce4ec;
+    ">
+      <img 
+        src="/ticket.jpg" 
+        alt="Your Roses of Sharon Ticket" 
+        style="display: block; width: 100%; max-width: 500px; height: auto; border-radius: 12px; margin: 0 auto 16px;"
+        onload="this.style.opacity=1"
+        onerror="this.src='https://via.placeholder.com/500x700/fff5f7/c2185b?text=Ticket+Image+Not+Found';"
+      >
+      <div style="
+        font-size: 2.2em;
+        font-weight: bold;
+        color: #c2185b;
+        letter-spacing: 2px;
+        text-align: center;
+      ">
+        ${result.ticketCode}
+      </div>
+    </div>
 
-            <p style="font-size: 1.15em; margin: 16px 0 24px; color: #444;">
-              Please <strong>save or screenshot</strong> this ticket right now.<br>
-              We will contact you soon via WhatsApp with further details.
-            </p>
+    <p style="font-size: 1.15em; margin: 16px 0 24px; color: #444;">
+      Please <strong>save or screenshot</strong> this ticket right now.<br>
+      We will contact you soon via WhatsApp with further details.
+    </p>
 
-            <div style="margin-top: 16px;">
-              Thank you for joining us! ♥
-            </div>
-          </div>
-        `;
-        messageDiv.className = 'success';
+    <div style="margin-top: 16px;">
+      Thank you for joining us! ♥
+    </div>
+  </div>
+`;
+messageDiv.className = 'success';
       
 
         updateTickets();
