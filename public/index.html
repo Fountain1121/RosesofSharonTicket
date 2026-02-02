@@ -247,11 +247,7 @@
       color: #b71c1c;
       border: 1px solid rgba(244,67,54,0.5);
     }
-    /* Sold-out styling */
-    .error strong {
-      display: block;
-      margin-bottom: 12px;
-    }
+
     .heart { font-size: 1.6rem; margin: 0 8px; color: var(--rose-red); }
 
     @media (max-width: 520px) {
@@ -319,11 +315,6 @@
           <label for="name">Full Name</label>
           <input type="text" id="name" name="name" placeholder="Enter your full name" required>
         </div>
-<!-- 
-        <div class="form-group">
-          <label for="email">Email Address</label>
-          <input type="email" id="email" name="email" placeholder="yourname@example.com" required>
-        </div> -->
 
         <div class="form-group">
           <label for="countryCode">WhatsApp Number</label>
@@ -356,110 +347,102 @@
 
   </div>
 
-<script>
-  const messageDiv = document.getElementById('message');
-  const remainingSpan = document.getElementById('tickets-remaining');
-  const totalSpan = document.getElementById('tickets-total');
-  const submitBtn = document.querySelector('button[type="submit"]');
-  const form = document.getElementById('reg-form');
-  const formSection = document.querySelector('.form-section'); // we'll hide this when sold out
+  <script>
+    const messageDiv = document.getElementById('message');
+    const remainingSpan = document.getElementById('tickets-remaining');
+    const totalSpan = document.getElementById('tickets-total');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const form = document.getElementById('reg-form');
 
-  async function updateTickets() {
-    try {
-      const res = await fetch('/api/tickets-left');
-      const data = await res.json();
+    async function updateTickets() {
+      try {
+        const res = await fetch('/api/tickets-left');
+        const data = await res.json();
+        remainingSpan.textContent = data.left ?? '—';
+        totalSpan.textContent = data.total ?? '—';
 
-      remainingSpan.textContent = data.left ?? '—';
-      totalSpan.textContent = data.total ?? '—';
+        if (data.left <= 0) {
+          remainingSpan.textContent = '0';
+          messageDiv.innerHTML = `
+            <strong style="color: #c62828; font-size: 1.4em;">No tickets left</strong><br>
+            The event is fully booked. All available tickets have been claimed.<br>
+            Thank you for your interest — see you at the next one! ♥
+          `;
+          messageDiv.className = 'error';
+          form.style.display = 'none';
+        }
+      } catch (err) {
+        remainingSpan.textContent = '—';
+        totalSpan.textContent = '—';
+        console.error('Failed to update tickets:', err);
+      }
+    }
 
-      // If no tickets left → show sold out message and hide form
-      if (data.left <= 0) {
-        remainingSpan.textContent = '0';
+    updateTickets();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = 'Processing...';
+      messageDiv.textContent = '';
+      messageDiv.className = '';
+
+      const formData = new FormData(form);
+      const name = formData.get('name').trim();
+      const countryCode = formData.get('countryCode');
+      let localPhone = formData.get('localPhone').trim().replace(/\D/g, '');
+
+      if (localPhone.startsWith('0')) {
+        localPhone = localPhone.substring(1);
+      }
+
+      const fullPhone = countryCode + localPhone;
+
+      if (!name || !localPhone) {
+        messageDiv.textContent = 'Please fill all fields correctly';
+        messageDiv.className = 'error';
+        resetButton();
+        return;
+      }
+
+      const data = { name, phone: fullPhone };
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) throw new Error(result.error || 'Registration failed');
+
         messageDiv.innerHTML = `
-          <strong style="color: #c62828; font-size: 1.4em;">No tickets left</strong><br>
-          The event is fully booked. All available tickets have been claimed.<br>
-          Thank you for your interest — see you at the next one! ♥
+          <strong>Success!</strong><br>
+          Your ticket code: <span style="font-size:1.3em; font-weight:bold; color:#c2185b;">${result.ticketCode}</span><br>
+          Please keep this code safe.<br>
+          We will contact you soon via WhatsApp with further details.<br>
+          <small>Thank you! ♥</small>
         `;
-        messageDiv.className = 'error'; // red styling
-        formSection.style.display = 'none'; // hide the form completely
-        submitBtn.style.display = 'none'; // extra safety
+        messageDiv.className = 'success';
+
+        updateTickets();
+        form.reset();
+
+      } catch (err) {
+        messageDiv.textContent = err.message;
+        messageDiv.className = 'error';
+      } finally {
+        resetButton();
       }
-    } catch (err) {
-      remainingSpan.textContent = '—';
-      totalSpan.textContent = '—';
-      console.error('Failed to update tickets:', err);
+    });
+
+    function resetButton() {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Secure My Free Ticket';
     }
-  }
-
-  // Load tickets on page open
-  updateTickets();
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = 'Processing...';
-    messageDiv.textContent = '';
-    messageDiv.className = '';
-
-    const formData = new FormData(form);
-    const name = formData.get('name').trim();
-    const email = formData.get('email').trim();
-    const countryCode = formData.get('countryCode');
-    let localPhone = formData.get('localPhone').trim().replace(/\D/g, '');
-
-    if (localPhone.startsWith('0')) {
-      localPhone = localPhone.substring(1);
-    }
-
-    const fullPhone = countryCode + localPhone;
-
-    if (!name || !email || !localPhone) {
-      messageDiv.textContent = 'Please fill all fields correctly';
-      messageDiv.className = 'error';
-      resetButton();
-      return;
-    }
-
-    const data = { name, email, phone: fullPhone };
-
-    try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || 'Registration failed');
-      }
-
-      messageDiv.innerHTML = `
-        <strong>Success!</strong><br>
-        Your ticket code: <span style="font-size:1.3em; font-weight:bold; color:#c2185b;">${result.ticketCode}</span><br>
-        We've issued it to your whatsapp. You should recieve your ticket within 24 hours.<br>
-        <small>Check spam/junk if not received soon.</small>
-      `;
-      messageDiv.className = 'success';
-
-      updateTickets(); // refresh count (will hide form if now 0)
-
-      form.reset();
-
-    } catch (err) {
-      messageDiv.textContent = err.message;
-      messageDiv.className = 'error';
-    } finally {
-      resetButton();
-    }
-  });
-
-  function resetButton() {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = 'Secure My Free Ticket';
-  }
-</script>
+  </script>
 </body>
 </html>

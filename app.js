@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// MongoDB Schemas
+// MongoDB Schemas – email removed
 const counterSchema = new mongoose.Schema({
   _id: String,
   current: Number,
@@ -18,9 +18,8 @@ const counterSchema = new mongoose.Schema({
 const Counter = mongoose.model('Counter', counterSchema);
 
 const userSchema = new mongoose.Schema({
-  name: String,
-  email: { type: String, unique: true, required: true, lowercase: true },
-  phone: { type: String, required: true }, // WhatsApp number
+  name: { type: String, required: true },
+  phone: { type: String, required: true }, // WhatsApp number only
   ticketCode: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
@@ -67,10 +66,10 @@ app.get('/api/tickets-left', async (req, res) => {
 });
 
 app.post('/api/register', async (req, res) => {
-  let { name, email, phone } = req.body;
+  let { name, phone } = req.body;
 
-  if (!name?.trim() || !email?.trim() || !phone?.trim()) {
-    return res.status(400).json({ error: 'All fields are required' });
+  if (!name?.trim() || !phone?.trim()) {
+    return res.status(400).json({ error: 'Name and WhatsApp number are required' });
   }
 
   try {
@@ -100,16 +99,10 @@ app.post('/api/register', async (req, res) => {
 
     const digitsAfterCode = normalizedPhone.replace('+', '').length;
     if (digitsAfterCode < 8 || digitsAfterCode > 15) {
-      return res.status(400).json({ error: 'Phone number must be 8-15 digits long after country code' });
+      return res.status(400).json({ error: 'WhatsApp number must be 8-15 digits long after country code' });
     }
 
     phone = normalizedPhone;
-
-    // Prevent duplicate registrations
-    const existing = await User.findOne({ email: email.trim().toLowerCase() });
-    if (existing) {
-      return res.status(400).json({ error: 'This email is already registered' });
-    }
 
     // Atomically claim a ticket
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
@@ -128,20 +121,19 @@ app.post('/api/register', async (req, res) => {
     const ticketNumber = counter.current;
     const ticketCode = `ROS-${String(ticketNumber).padStart(4, '0')}`;
 
-    // Save registration (no automatic sending)
+    // Save registration (only name, phone, ticketCode)
     const user = new User({
       name: name.trim(),
-      email: email.trim().toLowerCase(),
       phone,
       ticketCode,
     });
     await user.save();
 
-    // Respond to user (they get their code immediately)
+    // Respond to user immediately
     res.json({
       success: true,
       ticketCode,
-      message: `Registration successful!\n\nYour ticket code is ${ticketCode}.\n\nPlease keep this code safe.\nWe will contact you soon with further details.\nThank you! ♥`
+      message: `Registration successful!\n\nYour ticket code is ${ticketCode}.\n\nPlease keep this code safe.\nWe will contact you soon via WhatsApp with further details.\nThank you! ♥`
     });
 
   } catch (err) {
