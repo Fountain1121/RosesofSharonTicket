@@ -353,6 +353,7 @@
     const totalSpan = document.getElementById('tickets-total');
     const submitBtn = document.querySelector('button[type="submit"]');
     const form = document.getElementById('reg-form');
+    const formSection = document.querySelector('.form-section');
 
     async function updateTickets() {
       try {
@@ -369,7 +370,7 @@
             Thank you for your interest — see you at the next one! ♥
           `;
           messageDiv.className = 'error';
-          form.style.display = 'none';
+          formSection.style.display = 'none';
         }
       } catch (err) {
         remainingSpan.textContent = '—';
