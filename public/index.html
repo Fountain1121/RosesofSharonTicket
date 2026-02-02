@@ -187,27 +187,46 @@
     }
 
     button {
-      background: linear-gradient(90deg, var(--rose), var(--accent));
-      color: white;
+      background: linear-gradient(135deg, #c2185b 0%, #b71c1c 100%);
+      color: #ffffff;
       border: none;
-      padding: 16px;
+      padding: 16px 32px;
       font-size: 1.1rem;
       font-weight: 600;
-      border-radius: 14px;
+      font-family: 'Playfair Display', serif;  /* elegant serif font */
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      border-radius: 50px;
       cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 8px 24px rgba(193,24,91,0.25);
-      margin-top: 8px;
+      transition: all 0.35s ease;
+      box-shadow: 0 8px 24px rgba(193, 24, 91, 0.28);
+      letter-spacing: 0.5px;
+      margin-top: 12px;
     }
 
     button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(193,24,91,0.35);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 36px rgba(193, 24, 91, 0.45), 0 0 0 4px rgba(233, 30, 99, 0.15);
+      background: linear-gradient(135deg, #d81b60 0%, #c62828 100%);
     }
 
     button:disabled {
       opacity: 0.65;
       cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    button:disabled::after {
+      content: '';
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      margin-left: 12px;
+      border: 3px solid white;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
     }
 
     #message {
@@ -449,11 +468,11 @@
               margin-bottom: 8px;
               letter-spacing: -0.5px;
             ">
-              Welcome, ${name} ♥
+              Congratulations, ${name} ♥
             </h2>
 
             <p style="font-size: 1.1rem; color: #555; margin-bottom: 32px;">
-              Your place at Roses of Sharon is now reserved.
+              Your seat at Roses of Sharon  is now reserved.
             </p>
 
             <div class="ticket-card">
