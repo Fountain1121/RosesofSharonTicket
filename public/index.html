@@ -229,12 +229,11 @@
 
     #message {
       margin-top: 32px;
-      padding: 18px 24px;
+      padding: 18px;
       border-radius: 14px;
       font-weight: 500;
       text-align: center;
       line-height: 1.6;
-      white-space: pre-wrap;
     }
 
     #message.success {
@@ -258,6 +257,49 @@
       .phone-group select,
       .phone-group input { width: 100%; flex: none; }
       .event-grid { gap: 20px; }
+    }
+
+    /* New styles for success card */
+    .success-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 28px rgba(193,24,91,0.2);
+      padding: 24px;
+      margin: 20px auto;
+      max-width: 85%;
+      border: 2px solid #fce4ec;
+    }
+
+    .success-card img {
+      display: block;
+      width: 100%;
+      max-width: 450px;
+      height: auto;
+      border-radius: 12px;
+      margin: 0 auto 16px;
+    }
+
+    .success-card .ticket-code {
+      font-size: 2em;
+      font-weight: bold;
+      color: #c2185b;
+      letter-spacing: 2px;
+      text-align: center;
+      padding: 8px 16px;
+      background: #fff5f7;
+      border-radius: 10px;
+      border: 2px dashed #c2185b;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    .success-fade-in {
+      animation: fadeIn 1.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
@@ -359,12 +401,7 @@
     async function updateTickets() {
       try {
         const res = await fetch('/api/tickets-left');
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`Server returned ${res.status}: ${errorText.slice(0, 100)}...`);
-        }
         const data = await res.json();
-
         remainingSpan.textContent = data.left ?? '—';
         totalSpan.textContent = data.total ?? '—';
 
@@ -379,9 +416,9 @@
           formSection.style.display = 'none';
         }
       } catch (err) {
-        console.error('Ticket fetch failed:', err.message);
-        remainingSpan.textContent = 'Error';
+        remainingSpan.textContent = '—';
         totalSpan.textContent = '—';
+        console.error('Failed to update tickets:', err);
       }
     }
 
@@ -396,17 +433,17 @@
       messageDiv.className = '';
 
       const formData = new FormData(form);
-      const name = formData.get('name')?.trim();
+      const name = formData.get('name').trim();
       const countryCode = formData.get('countryCode');
-      let localPhone = formData.get('localPhone')?.trim().replace(/\D/g, '');
+      let localPhone = formData.get('localPhone').trim().replace(/\D/g, '');
 
-      if (localPhone?.startsWith('0')) {
+      if (localPhone.startsWith('0')) {
         localPhone = localPhone.substring(1);
       }
 
       const fullPhone = countryCode + localPhone;
 
-      if (!name || !fullPhone) {
+      if (!name || !localPhone) {
         messageDiv.textContent = 'Please fill all fields correctly';
         messageDiv.className = 'error';
         resetButton();
@@ -424,68 +461,72 @@
 
         const result = await res.json();
 
-        if (!res.ok) {
-          throw new Error(result.error || `Server error (${res.status})`);
-        }
+        if (!res.ok) throw new Error(result.error || 'Registration failed');
 
-messageDiv.innerHTML = `
-  <div style="text-align: center; padding: 16px 0;">
-    <strong style="font-size: 1.5em; color: #c2185b; display: block; margin-bottom: 12px;">
-      Success! Your Ticket is Confirmed ♥
-    </strong>
+        // Hide form section to "change the page" to success view
+        formSection.style.display = 'none';
 
-    <!-- Compact ticket card -->
-    <div style="
-      background: #fff5f7;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(193,24,91,0.15);
-      padding: 20px;
-      margin: 0 auto 20px;
-      max-width: 85%;
-      border: 1px solid #fce4ec;
-    ">
-      <img 
-        src="/ticket.jpg" 
-        alt="Your Roses of Sharon Ticket" 
-        style="display: block; width: 100%; max-width: 400px; height: auto; border-radius: 12px; margin: 0 auto 16px;"
-        onerror="this.src='https://via.placeholder.com/400x600/fff5f7/c2185b?text=Ticket+Image+Not+Found';"
-      >
+        // Surprising, beautiful success site with fade-in animation
+        messageDiv.innerHTML = `
+          <div class="success-fade-in" style="text-align: center; padding: 24px 0; animation: fadeIn 1.2s ease-in-out;">
+            <strong style="font-size: 1.8em; color: #c2185b; display: block; margin-bottom: 12px;">
+              Congratulations, ${name}! ♥
+            </strong>
 
-      <div style="
-        font-size: 0.2em;
-        font-weight: bold;
-        color: #c2185b;
-        letter-spacing: 2px;
-        text-align: center;
-        padding: 8px 16px;
-        background: white;
-        border-radius: 10px;
-        border: 2px solid #c2185b;
-        max-width: 300px;
-        margin: 0 auto;
-      ">
-        ${result.ticketCode}
-      </div>
-    </div>
+            <p style="font-size: 1.1em; margin-bottom: 20px; color: #555;">
+              Your spot at Roses of Sharon is secured!
+            </p>
 
-    <p style="font-size: 1.05em; margin: 12px 0 16px; color: #555;">
-      Please <strong>save or screenshot</strong> this ticket.<br>
-      We will contact you soon via WhatsApp ♥
-    </p>
+            <!-- Centered ticket card -->
+            <div style="
+              background: #fff5f7;
+              border-radius: 20px;
+              box-shadow: 0 8px 24px rgba(193,24,91,0.2);
+              padding: 24px;
+              margin: 0 auto 24px;
+              max-width: 420px;
+              border: 1px solid #fce4ec;
+            ">
+              <img 
+                src="/ticket.jpg" 
+                alt="Your Roses of Sharon Ticket" 
+                style="display: block; width: 100%; height: auto; border-radius: 12px; margin: 0 auto 16px;"
+                onload="this.style.opacity=1"
+                onerror="this.src='https://via.placeholder.com/400x550/fff5f7/c2185b?text=Your+Ticket';"
+              >
 
-    <div style="font-size: 1.1em; color: #c2185b;">
-      Thank you! 🌹
-    </div>
-  </div>
-`;
-messageDiv.className = 'success';
-      
+              <div style="
+                font-size: 2.0em;
+                font-weight: bold;
+                color: #c2185b;
+                letter-spacing: 2px;
+                text-align: center;
+                padding: 10px;
+                background: white;
+                border-radius: 10px;
+                border: 2px dashed #c2185b;
+              ">
+                ${result.ticketCode}
+              </div>
+            </div>
+
+            <p style="font-size: 1.1em; margin: 16px 0 24px; color: #555;">
+              Please <strong>screenshot or save</strong> this ticket.<br>
+              Show it at the entrance for entry.<br>
+              We'll reach out via WhatsApp soon!
+            </p>
+
+            <div style="font-size: 1.2em; color: #c2185b;">
+              See you there! ♥
+            </div>
+          </div>
+        `;
+        messageDiv.className = 'success';
 
         updateTickets();
-        form.reset();
 
       } catch (err) {
-        messageDiv.textContent = err.message || 'Something went wrong – please try again';
+        messageDiv.textContent = err.message;
         messageDiv.className = 'error';
       } finally {
         resetButton();
