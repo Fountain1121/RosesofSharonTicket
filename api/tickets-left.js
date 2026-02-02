@@ -17,11 +17,16 @@ const counterSchema = new mongoose.Schema({
 });
 const Counter = mongoose.model('Counter', counterSchema);
 
-module.exports = async (req, res) => {
+  module.exports = async (req, res) => {
   try {
     await connectDb();
-    const counter = await Counter.findById('ticket');
-    if (!counter) throw new Error('Counter not found');
+    let counter = await Counter.findById('ticket');
+    if (!counter) {
+      // Create with default total if missing
+      counter = new Counter({ _id: 'ticket', current: 0, total: 300 });
+      await counter.save();
+      console.log('Counter document created with total 300');
+    }
 
     res.status(200).json({
       left: counter.total - counter.current,
@@ -31,4 +36,17 @@ module.exports = async (req, res) => {
     console.error('tickets-left failed:', err.message);
     res.status(500).json({ error: 'Failed to fetch ticket info' });
   }
+  module.exports = async (req, res) => {
+  console.log('tickets-left function started');
+  console.log('MONGO_URI exists:', !!process.env.MONGO_URI);
+
+  try {
+    await connectDb();
+    console.log('DB connected');
+    // ... rest
+  } catch (err) {
+    console.error('Full error:', err);
+    res.status(500).json({ error: 'Failed to fetch ticket info', details: err.message });
+  }
+};
 };
