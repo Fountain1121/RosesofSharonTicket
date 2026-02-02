@@ -1,7 +1,5 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
-const axios = require('axios');
 const path = require('path');
 const dotenv = require('dotenv');
 
@@ -22,7 +20,7 @@ const Counter = mongoose.model('Counter', counterSchema);
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true, required: true, lowercase: true },
-  phone: { type: String, required: true },
+  phone: { type: String, required: true }, // WhatsApp number
   ticketCode: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
@@ -58,7 +56,6 @@ app.get('/api/tickets-left', async (req, res) => {
   try {
     const counter = await Counter.findById('ticket');
     if (!counter) throw new Error('Counter not found');
-
     res.json({ 
       left: counter.total - counter.current,
       total: counter.total
@@ -77,7 +74,7 @@ app.post('/api/register', async (req, res) => {
   }
 
   try {
-    // Normalize phone
+    // Normalize WhatsApp number
     let normalizedPhone = phone.trim().replace(/\D/g, '');
 
     if (!normalizedPhone) {
@@ -114,7 +111,7 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'This email is already registered' });
     }
 
-    // Atomically claim a ticket – this line prevents overselling
+    // Atomically claim a ticket
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '300', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
@@ -123,7 +120,6 @@ app.post('/api/register', async (req, res) => {
     );
 
     if (!counter) {
-      // No tickets left – return clear error
       return res.status(410).json({ 
         error: 'No tickets left – event is fully booked. All available tickets have been claimed.' 
       });
@@ -132,7 +128,7 @@ app.post('/api/register', async (req, res) => {
     const ticketNumber = counter.current;
     const ticketCode = `ROS-${String(ticketNumber).padStart(4, '0')}`;
 
-    // Save registration
+    // Save registration (no automatic sending)
     const user = new User({
       name: name.trim(),
       email: email.trim().toLowerCase(),
@@ -141,101 +137,12 @@ app.post('/api/register', async (req, res) => {
     });
     await user.save();
 
-    // Respond to user immediately (fast UX)
+    // Respond to user (they get their code immediately)
     res.json({
       success: true,
       ticketCode,
-      message: `Registration successful! Your ticket (${ticketCode}) is confirmed.\nWe're sending it to your email & SMS right now — check in a minute (also check spam).`,
-      delivery: { emailSent: false, smsSent: false }
+      message: `Registration successful!\n\nYour ticket code is ${ticketCode}.\n\nPlease keep this code safe.\nWe will contact you soon with further details.\nThank you! ♥`
     });
-
-    // Background sending (non-blocking)
-    (async () => {
-      let emailSuccess = false;
-      let smsSuccess = false;
-
-      // Event details
-      const eventDate = '13th February, 2026';
-      const eventTime = '6:00 PM';
-      const eventLocation = 'Love Country Church, Dayspring, Haatso, Accra, Ghana';
-      const mapUrl = 'https://www.google.com/maps/search/?api=1&query=Love+Country+Church%2C+Dayspring%2C+Haatso%2C+Accra%2C+Ghana';
-
-      // Email via Brevo SMTP
-      const transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.BREVO_SMTP_USER,
-          pass: process.env.BREVO_SMTP_PASS
-        },
-      });
-
-      try {
-        const info = await transporter.sendMail({
-          from: `"Roses of Sharon Team" <${process.env.BREVO_SMTP_USER}>`,
-          to: email.trim(),
-          subject: 'Your Roses of Sharon Virtual Ticket ♥',
-          html: `
-            <html>
-              <body style="font-family: Arial, sans-serif; color: #333; background-color: #f8f8f8; padding: 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                  <h2 style="color: #c2185b; text-align: center;">Welcome to Roses of Sharon!</h2>
-                  <p>Dear ${name.trim()},</p>
-                  <p>Thank you for registering for our special Valentine's Day celebration.</p>
-                  <p style="font-size: 1.2em; font-weight: bold;">Your Ticket Code: ${ticketCode}</p>
-                  <p><strong>Event Details:</strong></p>
-                  <ul style="list-style: none; padding-left: 0;">
-                    <li>📅 <strong>Date:</strong> ${eventDate}</li>
-                    <li>🕕 <strong>Time:</strong> ${eventTime}</li>
-                    <li>📍 <strong>Location:</strong> ${eventLocation}</li>
-                  </ul>
-                  <p>Find your way easily: <a href="${mapUrl}" style="color: #c2185b; text-decoration: none; font-weight: bold;">View on Google Maps</a></p>
-                  <img src="cid:ticketImage" alt="Roses of Sharon Ticket" style="max-width: 100%; margin: 20px 0; border-radius: 8px;" />
-                  <p>We look forward to sharing this beautiful evening of love, worship, and fellowship with you!</p>
-                  <p style="text-align: center; color: #777; font-size: 0.9em;">Blessings,<br>The Church Team</p>
-                </div>
-              </body>
-            </html>
-          `,
-          attachments: [
-            {
-              filename: 'ticket.png',
-              path: path.join(__dirname, 'public', 'ticket.png'),
-              cid: 'ticketImage',
-            },
-          ],
-        });
-        console.log('Background email sent → ID:', info.messageId);
-        emailSuccess = true;
-      } catch (emailErr) {
-        console.error('Background email failed:', emailErr.message);
-      }
-
-      // SMS via Brevo API
-      try {
-        await axios.post(
-          'https://api.brevo.com/v3/transactionalSMS/sms',
-          {
-            sender: process.env.BREVO_SMS_SENDER,
-            recipient: phone,
-            content: `Dear ${name.trim()},\n\nThank you for registering for Roses of Sharon!\n\nYour Ticket Code: ${ticketCode}\nDate: ${eventDate}\nTime: ${eventTime}\nLocation: ${eventLocation}\nMap: ${mapUrl}\n\nWe can't wait to see you there! ♥\nThe Church Team`,
-            type: 'transactional'
-          },
-          {
-            headers: {
-              'accept': 'application/json',
-              'api-key': process.env.BREVO_API_KEY,
-              'content-type': 'application/json'
-            }
-          }
-        );
-        console.log('Background SMS sent successfully');
-        smsSuccess = true;
-      } catch (smsErr) {
-        console.error('Background SMS failed:', smsErr.message);
-      }
-    })();
 
   } catch (err) {
     console.error('Registration error:', err);
