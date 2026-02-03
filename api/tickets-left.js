@@ -23,9 +23,9 @@ const Counter = mongoose.model('Counter', counterSchema);
     let counter = await Counter.findById('ticket');
     if (!counter) {
       // Create with default total if missing
-      counter = new Counter({ _id: 'ticket', current: 0, total: 300 });
+      counter = new Counter({ _id: 'ticket', current: 0, total: 400 });
       await counter.save();
-      console.log('Counter document created with total 300');
+      console.log('Counter document created with total 400');
     }
 
     res.status(200).json({
