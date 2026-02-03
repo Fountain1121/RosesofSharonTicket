@@ -86,6 +86,8 @@ module.exports = async (req, res) => {
     }
 
     // Claim a ticket (atomically 400)
+    const currentCounter = await Counter.findById('ticket');
+    console.log(`DB state before claim: current=${currentCounter?.current}, total=${currentCounter?.total}`);
     const MAX_TICKETS = parseInt(process.env.TOTAL_TICKETS || '400', 10);
     const counter = await Counter.findOneAndUpdate(
       { _id: 'ticket', current: { $lt: MAX_TICKETS } },
